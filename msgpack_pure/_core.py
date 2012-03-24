@@ -52,21 +52,22 @@ def packs(obj, **kwargs):
     if kwargs.get('default'):
         obj = kwargs['default'](obj)
 
-    if obj == None:  return chr(_NIL)
+    if obj is None:
+        return chr(_NIL)
 
-    if isinstance(obj,bool) and obj:
+    if obj is True:
         return chr(_TRUE)
 
-    if isinstance(obj,bool) and obj == False:
+    if obj is False:
         return chr(_FALSE)
 
     if isinstance(obj, int) or isinstance(obj, long):
         # Positive Fixnum
-        if 0 <= obj and obj <= 127:
+        if 0 <= obj <= 127:
             return struct.pack("B", obj)
 
         # Negative Fixnum
-        elif -32 <= obj and obj <= 0:
+        elif -32 <= obj <= 0:
             return struct.pack("b", obj)
 
         # uint 8
@@ -74,18 +75,18 @@ def packs(obj, **kwargs):
             return struct.pack("BB", _UINT8, obj)
 
         # int 8
-        elif _INT8_MIN <= obj and obj <= _INT8_MAX:
+        elif _INT8_MIN <= obj <= _INT8_MAX:
             return struct.pack(">Bb", _INT8, obj)
 
         # uint 16
         elif 0 <= obj <= _UINT16_MAX:
             return struct.pack(">BH", _UINT16, obj)
 
-        elif _INT16_MIN <= obj and obj <= _INT16_MAX:
+        elif _INT16_MIN <= obj <= _INT16_MAX:
             return struct.pack(">Bh", _INT16, obj)
 
         # int 32
-        elif _INT32_MIN <= obj and obj <= _INT32_MAX:
+        elif _INT32_MIN <= obj <= _INT32_MAX:
             return struct.pack(">Bi", _INT32, obj)
 
         # uint 32
@@ -93,7 +94,7 @@ def packs(obj, **kwargs):
             return struct.pack(">BI", _UINT32, obj)
 
         # int 64
-        elif _INT64_MIN <= obj and obj <= _INT64_MAX:
+        elif _INT64_MIN <= obj <= _INT64_MAX:
             return struct.pack(">Bq", _INT64, obj)
 
         # uint64
@@ -157,7 +158,7 @@ def packs(obj, **kwargs):
         elif sz <= 2**32-1:
             packed += struct.pack(">BI", _MAP32, sz)
 
-        for (k,v) in obj.iteritems():
+        for k, v in obj.iteritems():
             packed += packs(k, **kwargs)
             packed += packs(v, **kwargs)
 
