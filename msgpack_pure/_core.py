@@ -61,7 +61,7 @@ def packs(obj, **kwargs):
     if obj is False:
         return chr(_FALSE)
 
-    if isinstance(obj, int) or isinstance(obj, long):
+    if isinstance(obj, (int, long)):
         # Positive Fixnum
         if 0 <= obj <= 127:
             return struct.pack("B", obj)
@@ -104,7 +104,7 @@ def packs(obj, **kwargs):
         raise RuntimeError("Integer value out of range")
 
     # raw bytes
-    if isinstance(obj, str) or isinstance(obj, unicode):
+    if isinstance(obj, (str, unicode)):
         if isinstance(obj, unicode):
             obj = obj.encode('utf-8')
         nbytes = len(obj)
@@ -124,45 +124,41 @@ def packs(obj, **kwargs):
         return struct.pack(">Bd", _DOUBLE, obj)
 
     # array
-    if isinstance(obj, list) or isinstance(obj, tuple):
-        packed = ""
+    if isinstance(obj, (list, tuple)):
+        packed = []
         sz = len(obj)
 
         if sz <= 15:
-            packed += chr(_FIX_ARY + (sz & 0x0f))
-            for i in range(sz):
-                packed += packs(obj[i], **kwargs)
+            packed.append(chr(_FIX_ARY + (sz & 0x0f)))
 
         elif sz <= 2**16-1:
-            packed += chr(_ARY16)
-            packed += struct.pack(">H", sz)
-            for i in range(sz):
-                packed += packs(obj[i], **kwargs)
+            packed.append(chr(_ARY16))
+            packed.append(struct.pack(">H", sz))
 
         elif sz <= 2**32-1:
-            packed += chr(_ARY32)
-            packed += struct.pack(">I", sz)
-            for i in range(sz):
-                packed += packs(obj[i], **kwargs)
+            packed.append(chr(_ARY32))
+            packed.append(struct.pack(">I", sz))
 
-        return packed
+        packed += [packs(obj[i], **kwargs) for i in range(sz)]
+
+        return "".join(packed)
 
     # map
     if isinstance(obj, dict):
         sz = len(obj)
-        packed = ""
+        packed = []
         if sz <= 15:
-            packed += chr(_FIX_MAP + sz)
+            packed.append(chr(_FIX_MAP + sz))
         elif sz <= 2**16-1:
-            packed += struct.pack(">BH", _MAP16, sz)
+            packed.append(struct.pack(">BH", _MAP16, sz))
         elif sz <= 2**32-1:
-            packed += struct.pack(">BI", _MAP32, sz)
+            packed.append(struct.pack(">BI", _MAP32, sz))
 
         for k, v in obj.iteritems():
-            packed += packs(k, **kwargs)
-            packed += packs(v, **kwargs)
+            packed.append(packs(k, **kwargs))
+            packed.append(packs(v, **kwargs))
 
-        return packed
+        return "".join(packed)
 
     # otherwise: unknown type
     raise TypeError()
@@ -185,7 +181,7 @@ class Unpacker():
             
 
     def apply_hook(self, obj, **kwargs):
-        if self.list_hook and (isinstance(obj, list) or isinstance(obj, tuple)):
+        if self.list_hook and isinstance(obj, (tuple, list)):
             obj = self.list_hook(obj)
 
         elif self.object_hook and isinstance(obj, dict):
@@ -296,13 +292,7 @@ class Unpacker():
 
 
     def read_list_body(self, mp, sz):
-        obj = []
-        for i in range(sz):
-            o = self.read_obj(mp)
-            o = self.apply_hook(o)
-            obj.append(o)
-            
-        obj = tuple(obj)
+        obj = tuple(self.apply_hook(self.read_obj(mp)) for i in range(sz))
         return self.apply_hook(obj)
 
     def read_map_body(self, mp, sz):
